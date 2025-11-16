@@ -1,0 +1,24 @@
+{
+  "name": "swimmingpool-api",
+  "version": "1.0.0",
+  "description": "Backend API for Swimming pool app",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon index.js",
+    "migrate": "npx prisma migrate dev",
+    "seed": "node prisma/seed.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.17.1",
+    "bcrypt": "^5.1.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.0",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.0",
+    "nodemailer": "^6.9.4"
+  },
+  "devDependencies": {
+    "prisma": "^6.17.1",
+    "nodemon": "^2.0.22"
+  }
+}
