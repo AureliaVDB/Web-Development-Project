@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('../generated/prisma');
+const { calculateDistance } = require('../utils/distance');
 const prisma = new PrismaClient();
 
 // Get all swimming pools from database
 router.get('/', async (req, res) => {
   try {
-    const { search, type, city } = req.query;
+    const { search, type, city, x, y, radius } = req.query;
 
     // Build filter conditions
     const where = {};
@@ -30,7 +31,7 @@ router.get('/', async (req, res) => {
     }
 
     // Fetch pools from database
-    const pools = await prisma.pool.findMany({
+    let pools = await prisma.pool.findMany({
       where,
       select: {
         id: true,
@@ -49,9 +50,30 @@ router.get('/', async (req, res) => {
       }
     });
 
+    // Filter by distance if coordinates provided
+    if (x && y) {
+      const userX = parseFloat(x);
+      const userY = parseFloat(y);
+      const maxRadius = radius ? parseFloat(radius) : null;
+
+      // Calculate distance for each pool
+      pools = pools.map(pool => ({
+        ...pool,
+        distance: calculateDistance(userX, userY, pool.longitude, pool.latitude)
+      }));
+
+      // Filter by radius if specified
+      if (maxRadius) {
+        pools = pools.filter(pool => pool.distance <= maxRadius);
+      }
+
+      // Sort by distance
+      pools.sort((a, b) => a.distance - b.distance);
+    }
+
     res.json({
       count: pools.length,
-      filters: { search, type, city },
+      filters: { search, type, city, x, y, radius },
       pools
     });
   } catch (error) {
