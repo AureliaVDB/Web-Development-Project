@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('../generated/prisma');
 const { authenticateToken } = require('../middleware/auth');
+const { sendBookingConfirmation, sendCancellationEmail } = require('../utils/email');
 const prisma = new PrismaClient();
 
 // Get user's bookings
@@ -88,8 +89,16 @@ router.post('/', authenticateToken, async (req, res) => {
         totalPrice: 0,
         status: 'confirmed'
       },
-      include: { pool: true }
+      include: { pool: true, user: true }
     });
+
+    // Send confirmation email (don't wait for it)
+    sendBookingConfirmation(
+      booking.user.email,
+      booking.user.name,
+      booking,
+      booking.pool
+    ).catch(err => console.error('Email error:', err));
 
     res.status(201).json(booking);
   } catch (error) {
@@ -104,7 +113,8 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
     // Check if booking exists and belongs to user
     const booking = await prisma.booking.findUnique({
-      where: { id: bookingId }
+      where: { id: bookingId },
+      include: { pool: true, user: true }
     });
 
     if (!booking) {
@@ -129,6 +139,14 @@ router.delete('/:id', authenticateToken, async (req, res) => {
         hoursUntilBooking: Math.round(hoursUntilBooking * 10) / 10
       });
     }
+
+    // Send cancellation email before deleting
+    sendCancellationEmail(
+      booking.user.email,
+      booking.user.name,
+      booking,
+      booking.pool
+    ).catch(err => console.error('Email error:', err));
 
     // Delete booking
     await prisma.booking.delete({
