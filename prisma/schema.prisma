@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model booking {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  poolId      Int
+  bookingDate DateTime @db.Date
+  startTime   String   @db.VarChar(10)
+  endTime     String   @db.VarChar(10)
+  duration    Int
+  totalPrice  Float
+  status      String   @default("confirmed") @db.VarChar(50)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime
+  pool        pool     @relation(fields: [poolId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Booking_poolId_fkey")
+  user        user     @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "Booking_userId_fkey")
+
+  @@index([bookingDate], map: "Booking_bookingDate_idx")
+  @@index([poolId], map: "Booking_poolId_idx")
+  @@index([userId], map: "Booking_userId_idx")
+}
+
+model pool {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(255)
+  description  String?   @db.Text
+  address      String    @db.VarChar(255)
+  city         String    @db.VarChar(100)
+  latitude     Float?
+  longitude    Float?
+  poolType     String    @db.VarChar(100)
+  isIndoor     Boolean   @default(false)
+  facilities   String?   @db.Text
+  imageUrl     String?   @db.VarChar(500)
+  openingTime  String    @db.VarChar(10)
+  closingTime  String    @db.VarChar(10)
+  pricePerHour Float
+  capacity     Int
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime
+  booking      booking[]
+}
+
+model user {
+  id        Int       @id @default(autoincrement())
+  email     String    @unique(map: "User_email_key") @db.VarChar(255)
+  name      String    @db.VarChar(255)
+  password  String    @db.VarChar(255)
+  role      String    @default("user") @db.VarChar(50)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime
+  booking   booking[]
+}
