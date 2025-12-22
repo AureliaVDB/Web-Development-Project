@@ -77,6 +77,63 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Check availability for a pool on a specific date
+router.get('/:id/availability', async (req, res) => {
+  try {
+    const { date } = req.query;
+
+    if (!date) {
+      return res.status(400).json({ error: 'Date parameter required (format: YYYY-MM-DD)' });
+    }
+
+    const pool = await prisma.pool.findUnique({
+      where: { id: req.params.id }
+    });
+
+    if (!pool) {
+      return res.status(404).json({ error: 'Pool not found' });
+    }
+
+    // All possible time slots
+    const timeSlots = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
+
+    // Get bookings for this pool on this date
+    const bookings = await prisma.booking.findMany({
+      where: {
+        poolId: req.params.id,
+        bookingDate: new Date(date),
+        status: 'confirmed'
+      }
+    });
+
+    // Count bookings per time slot
+    const availability = timeSlots.map(slot => {
+      const bookingsAtSlot = bookings.filter(b => b.startTime === slot).length;
+      const available = pool.capacity - bookingsAtSlot;
+      
+      return {
+        startTime: slot,
+        endTime: `${String(parseInt(slot.split(':')[0]) + 1).padStart(2, '0')}:00`,
+        capacity: pool.capacity,
+        booked: bookingsAtSlot,
+        available,
+        isAvailable: available > 0
+      };
+    });
+
+    res.json({
+      poolId: pool.id,
+      poolName: pool.name,
+      date,
+      openingTime: pool.openingTime,
+      closingTime: pool.closingTime,
+      slots: availability
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to check availability', details: error.message });
+  }
+});
+
 // Debug route - see raw API response
 router.get('/debug/raw', async (req, res) => {
   try {
