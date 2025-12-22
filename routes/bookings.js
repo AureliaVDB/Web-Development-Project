@@ -115,6 +115,21 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'You can only delete your own bookings' });
     }
 
+    // Check if booking is at least 24 hours away
+    const bookingDateTime = new Date(booking.bookingDate);
+    const [hours, minutes] = booking.startTime.split(':');
+    bookingDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    
+    const now = new Date();
+    const hoursUntilBooking = (bookingDateTime - now) / (1000 * 60 * 60);
+    
+    if (hoursUntilBooking < 24) {
+      return res.status(400).json({ 
+        error: 'Cannot cancel booking less than 24 hours before start time',
+        hoursUntilBooking: Math.round(hoursUntilBooking * 10) / 10
+      });
+    }
+
     // Delete booking
     await prisma.booking.delete({
       where: { id: bookingId }
