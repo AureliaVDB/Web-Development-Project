@@ -1,68 +1,79 @@
 const express = require('express');
 const router = express.Router();
+const { PrismaClient } = require('../generated/prisma');
+const prisma = new PrismaClient();
 
-// Get all swimming pools from Geopunt API
+// Get all swimming pools from database
 router.get('/', async (req, res) => {
   try {
-    // Fetch indoor pools
-    const indoorResponse = await fetch('https://www.geopunt.be/bff/poi', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
+    const { search, type, city } = req.query;
+
+    // Build filter conditions
+    const where = {};
+
+    if (search) {
+      where.name = {
+        contains: search
+      };
+    }
+
+    if (type === 'indoor') {
+      where.isIndoor = true;
+    } else if (type === 'outdoor') {
+      where.isIndoor = false;
+    }
+
+    if (city) {
+      where.city = {
+        contains: city
+      };
+    }
+
+    // Fetch pools from database
+    const pools = await prisma.pool.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        isIndoor: true,
+        address: true,
+        city: true,
+        latitude: true,
+        longitude: true,
+        capacity: true,
+        openingTime: true,
+        closingTime: true
       },
-      body: JSON.stringify({
-        poiType: 'OverdektZwembad',
-        crs: 31370,
-        maxCount: 1000,
-        spatialRel: 'envelopeintersects',
-        bbox: null,
-        clustering: false
-      })
+      orderBy: {
+        name: 'asc'
+      }
     });
-    
-    // Fetch outdoor pools
-    const outdoorResponse = await fetch('https://www.geopunt.be/bff/poi', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        poiType: 'OpenluchtZwembad',
-        crs: 31370,
-        maxCount: 1000,
-        spatialRel: 'envelopeintersects',
-        bbox: null,
-        clustering: false
-      })
-    });
-    
-    const indoorData = await indoorResponse.json();
-    const outdoorData = await outdoorResponse.json();
-    
-    const indoorPools = indoorData.result?.pois || [];
-    const outdoorPools = outdoorData.result?.pois || [];
-    
-    console.log('Indoor pools:', indoorPools.length);
-    console.log('Outdoor pools:', outdoorPools.length);
-    
-    // Combine and map to simplified format
-    const allPools = [...indoorPools, ...outdoorPools];
-    
-    const pools = allPools.map(poi => ({
-      id: poi.id,
-      name: poi.labels?.find(l => l.term === 'primary')?.value || 'Unknown',
-      isIndoor: indoorPools.some(p => p.id === poi.id),
-      address: poi.location?.address || null,
-      coordinates: poi.location?.points?.[0]?.point?.coordinates
-    }));
 
     res.json({
       count: pools.length,
+      filters: { search, type, city },
       pools
     });
   } catch (error) {
     console.error('Error:', error);
     res.status(500).json({ error: 'Failed to fetch pools', details: error.message });
+  }
+});
+
+// Get single pool by ID (must be before debug routes)
+router.get('/:id', async (req, res) => {
+  try {
+    const pool = await prisma.pool.findUnique({
+      where: { id: req.params.id }
+    });
+
+    if (!pool) {
+      return res.status(404).json({ error: 'Pool not found' });
+    }
+
+    res.json(pool);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch pool', details: error.message });
   }
 });
 
@@ -119,22 +130,6 @@ router.get('/debug/names', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
-  }
-});
-
-// Get single pool by ID
-router.get('/:id', async (req, res) => {
-  try {
-    const response = await fetch(`https://poi.api.geopunt.be/v1/core?id=${req.params.id}&maxmodel=true`);
-    const data = await response.json();
-
-    if (!data.pois || data.pois.length === 0) {
-      return res.status(404).json({ error: 'Pool not found' });
-    }
-
-    res.json(data.pois[0]);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch pool', details: error.message });
   }
 });
 

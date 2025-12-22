@@ -20,7 +20,7 @@ model User {
 }
 
 model Pool {
-  id          Int       @id @default(autoincrement())
+  id          String    @id
   name        String
   description String?   @db.Text
   address     String
@@ -33,7 +33,6 @@ model Pool {
   imageUrl    String?
   openingTime String
   closingTime String
-  pricePerHour Float
   capacity    Int
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -43,7 +42,7 @@ model Pool {
 model Booking {
   id          Int      @id @default(autoincrement())
   userId      Int
-  poolId      Int
+  poolId      String
   bookingDate DateTime
   startTime   String
   endTime     String

@@ -13,11 +13,13 @@ const authRouter = require('./routes/auth');
 const usersRouter = require('./routes/users');
 const poolsRouter = require('./routes/pools');
 const bookingsRouter = require('./routes/bookings');
+// const adminRouter = require('./routes/admin');
 
 app.use('/auth', authRouter);
 app.use('/users', usersRouter);
 app.use('/pools', poolsRouter);
 app.use('/bookings', bookingsRouter);
+// app.use('/admin', adminRouter);
 
 // Health check
 app.get('/', (req, res) => {

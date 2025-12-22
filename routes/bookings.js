@@ -22,7 +22,36 @@ router.get('/my-bookings', authenticateToken, async (req, res) => {
 // Create booking
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { poolId, bookingDate, startTime, endTime, duration } = req.body;
+    const { poolId, bookingDate, startTime } = req.body;
+
+    // Validate required fields
+    if (!poolId || !bookingDate || !startTime) {
+      return res.status(400).json({ error: 'Missing required fields: poolId, bookingDate, startTime' });
+    }
+
+    // Validate date is not in the past
+    const bookingDateObj = new Date(bookingDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    bookingDateObj.setHours(0, 0, 0, 0);
+    
+    if (bookingDateObj < today) {
+      return res.status(400).json({ error: 'Cannot book in the past' });
+    }
+
+    // Validate time slot (must be one of the hourly slots from 9am to 4pm)
+    const validSlots = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
+    if (!validSlots.includes(startTime)) {
+      return res.status(400).json({ 
+        error: 'Invalid time slot. Must be one of: 09:00, 10:00, 11:00, 12:00, 13:00, 14:00, 15:00, 16:00',
+        validSlots 
+      });
+    }
+
+    // Calculate endTime (1 hour after startTime)
+    const [hours] = startTime.split(':');
+    const endHour = String(parseInt(hours) + 1).padStart(2, '0');
+    const endTime = `${endHour}:00`;
 
     // Check if pool exists
     const pool = await prisma.pool.findUnique({
@@ -33,17 +62,18 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Pool not found' });
     }
 
-    // Check capacity - count bookings for same pool, date, and overlapping time
+    // Check capacity - count bookings for same pool, date, and time slot
     const existingBookings = await prisma.booking.count({
       where: {
         poolId,
         bookingDate: new Date(bookingDate),
+        startTime,
         status: 'confirmed'
       }
     });
 
     if (existingBookings >= pool.capacity) {
-      return res.status(400).json({ error: 'Pool capacity reached for this date' });
+      return res.status(400).json({ error: 'This time slot is fully booked' });
     }
 
     // Create booking
@@ -54,7 +84,7 @@ router.post('/', authenticateToken, async (req, res) => {
         bookingDate: new Date(bookingDate),
         startTime,
         endTime,
-        duration,
+        duration: 1, // Always 1 hour
         totalPrice: 0,
         status: 'confirmed'
       },
