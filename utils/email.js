@@ -83,7 +83,7 @@ async function sendCancellationEmail(userEmail, userName, booking, pool) {
 
 // Send password reset email
 async function sendPasswordResetEmail(userEmail, userName, resetToken) {
-  const resetUrl = `http://localhost:3000/reset-password?token=${resetToken}`;
+  const resetUrl = `http://localhost:5173/reset-password?token=${resetToken}`;
   
   const mailOptions = {
     from: process.env.EMAIL_FROM,
@@ -116,7 +116,7 @@ async function sendPasswordResetEmail(userEmail, userName, resetToken) {
 
 // Send email verification
 async function sendVerificationEmail(userEmail, userName, verificationToken) {
-  const verifyUrl = `http://localhost:3000/verify-email?token=${verificationToken}`;
+  const verifyUrl = `http://localhost:5173/verify-email?token=${verificationToken}`;
   
   const mailOptions = {
     from: process.env.EMAIL_FROM,
