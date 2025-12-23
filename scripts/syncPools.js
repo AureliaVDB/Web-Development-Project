@@ -1,5 +1,16 @@
 const { PrismaClient } = require('../generated/prisma');
+const proj4 = require('proj4');
 const prisma = new PrismaClient();
+
+// Define Lambert 31370 (Belgian Lambert) projection
+const lambert31370 = '+proj=lcc +lat_1=51.16666723333333 +lat_2=49.8333339 +lat_0=90 +lon_0=4.367486666666666 +x_0=150000.013 +y_0=5400088.438 +ellps=intl +towgs84=-106.8686,52.2978,-103.7239,0.3366,-0.457,1.8422,-1.2747 +units=m +no_defs';
+const wgs84 = 'EPSG:4326';
+
+// Function to convert Lambert to lat/lng
+function lambertToLatLng(x, y) {
+  const [lng, lat] = proj4(lambert31370, wgs84, [x, y]);
+  return { lat, lng };
+}
 
 async function syncPools() {
   try {
@@ -62,6 +73,13 @@ async function syncPools() {
         const detailData = await detailResponse.json();
         const poolDetail = detailData.pois?.[0] || poi;
 
+        // Get Lambert coordinates
+        const lambertX = poolDetail.location?.points?.[0]?.Point?.coordinates?.[0] || 0;
+        const lambertY = poolDetail.location?.points?.[0]?.Point?.coordinates?.[1] || 0;
+        
+        // Convert to WGS84 lat/lng for map display
+        const { lat, lng } = lambertToLatLng(lambertX, lambertY);
+
         const poolData = {
           id: poi.id,
           name: poolDetail.labels?.find(l => l.term === 'primary')?.value || 'Unknown',
@@ -70,8 +88,8 @@ async function syncPools() {
             ? `${poolDetail.location.address.street || ''} ${poolDetail.location.address.streetnumber || ''}`.trim()
             : 'Unknown',
           city: poolDetail.location?.address?.municipality || 'Unknown',
-          latitude: poolDetail.location?.points?.[0]?.Point?.coordinates?.[1] || 0,
-          longitude: poolDetail.location?.points?.[0]?.Point?.coordinates?.[0] || 0,
+          latitude: lat,  // Now proper WGS84 latitude
+          longitude: lng, // Now proper WGS84 longitude
           poolType: poi.isIndoor ? 'Indoor' : 'Outdoor',
           isIndoor: poi.isIndoor,
           facilities: null,
