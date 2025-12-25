@@ -25,6 +25,11 @@ router.post('/', authenticateToken, async (req, res) => {
   try {
     const { poolId, bookingDate, startTime } = req.body;
 
+    // Check if user is admin - admins cannot book
+    if (req.user.role === 'admin') {
+      return res.status(403).json({ error: 'Administrators cannot make bookings' });
+    }
+
     // Validate required fields
     if (!poolId || !bookingDate || !startTime) {
       return res.status(400).json({ error: 'Missing required fields: poolId, bookingDate, startTime' });
