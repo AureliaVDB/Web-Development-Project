@@ -23,10 +23,7 @@ router.get('/my-bookings', authenticateToken, async (req, res) => {
 // Create booking
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    let { poolId, bookingDate, startTime } = req.body;
-
-    // Coerce types
-    poolId = parseInt(poolId);
+    const { poolId, bookingDate, startTime } = req.body;
 
     // Validate required fields
     if (!poolId || !bookingDate || !startTime) {
