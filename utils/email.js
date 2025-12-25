@@ -1,4 +1,6 @@
 const nodemailer = require('nodemailer');
+const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+const EMAIL_DISABLED = !isProd && (String(process.env.EMAIL_DISABLED || 'false').toLowerCase() === 'true');
 
 // Create transporter
 const transporter = nodemailer.createTransport({
@@ -13,6 +15,10 @@ const transporter = nodemailer.createTransport({
 
 // Send booking confirmation email
 async function sendBookingConfirmation(userEmail, userName, booking, pool) {
+  if (EMAIL_DISABLED) {
+    console.log('[Email disabled] Would send booking confirmation to:', userEmail);
+    return;
+  }
   const mailOptions = {
     from: process.env.EMAIL_FROM,
     to: userEmail,
@@ -49,6 +55,10 @@ async function sendBookingConfirmation(userEmail, userName, booking, pool) {
 
 // Send cancellation email
 async function sendCancellationEmail(userEmail, userName, booking, pool) {
+  if (EMAIL_DISABLED) {
+    console.log('[Email disabled] Would send cancellation email to:', userEmail);
+    return;
+  }
   const mailOptions = {
     from: process.env.EMAIL_FROM,
     to: userEmail,
@@ -83,7 +93,12 @@ async function sendCancellationEmail(userEmail, userName, booking, pool) {
 
 // Send password reset email
 async function sendPasswordResetEmail(userEmail, userName, resetToken) {
-  const resetUrl = `http://localhost:5175/reset-password?token=${resetToken}`;
+  if (EMAIL_DISABLED) {
+    console.log('[Email disabled] Would send password reset email to:', userEmail);
+    return;
+  }
+  const baseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:5175';
+  const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
   
   const mailOptions = {
     from: process.env.EMAIL_FROM,
@@ -116,7 +131,12 @@ async function sendPasswordResetEmail(userEmail, userName, resetToken) {
 
 // Send email verification
 async function sendVerificationEmail(userEmail, userName, verificationToken) {
-  const verifyUrl = `http://localhost:5175/verify-email?token=${verificationToken}`;
+  if (EMAIL_DISABLED) {
+    console.log('[Email disabled] Would send verification email to:', userEmail);
+    return;
+  }
+  const baseUrl = process.env.FRONTEND_BASE_URL || 'http://localhost:5175';
+  const verifyUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
   
   const mailOptions = {
     from: process.env.EMAIL_FROM,

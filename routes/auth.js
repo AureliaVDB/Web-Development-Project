@@ -12,6 +12,24 @@ router.post('/register', async (req, res) => {
   try {
     const { email, name, password } = req.body;
 
+    // Basic validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const hasMinLength = (password || '').length >= 6;
+    const hasLetter = /[A-Za-z]/.test(password || '');
+    const hasNumber = /[0-9]/.test(password || '');
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Name is required' });
+    }
+
+    if (!email || !emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Please provide a valid email address' });
+    }
+
+    if (!hasMinLength || !hasLetter || !hasNumber) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters and contain letters and numbers' });
+    }
+
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email }
@@ -226,6 +244,42 @@ router.get('/verify-email', async (req, res) => {
     res.json({ message: 'Email verified successfully! You can now login.' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to verify email', details: error.message });
+  }
+});
+
+// Resend verification email
+router.post('/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      // Don't reveal user existence
+      return res.json({ message: 'If that account exists, a verification email has been sent' });
+    }
+
+    if (user.emailVerified) {
+      return res.status(400).json({ error: 'Email already verified' });
+    }
+
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { verificationToken }
+    });
+
+    // Fire-and-forget send
+    sendVerificationEmail(user.email, user.name || 'User', verificationToken)
+      .catch(err => console.error('Email error:', err));
+
+    res.json({ message: 'Verification email sent' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to resend verification', details: error.message });
   }
 });
 
