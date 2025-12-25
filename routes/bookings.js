@@ -11,7 +11,7 @@ router.get('/my-bookings', authenticateToken, async (req, res) => {
     const bookings = await prisma.booking.findMany({
       where: { userId: req.user.userId },
       include: { pool: true },
-      orderBy: { bookingDate: 'desc' }
+      orderBy: { bookingDate: 'asc' }
     });
 
     res.json(bookings);
