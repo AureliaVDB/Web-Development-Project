@@ -3,6 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('../generated/prisma');
 const { authenticateToken } = require('../middleware/auth');
 const { sendBookingConfirmation, sendCancellationEmail } = require('../utils/email');
+const { triggerBookingWebhook } = require('../utils/webhooks');
 const prisma = new PrismaClient();
 
 // Get user's bookings
@@ -108,6 +109,10 @@ router.post('/', authenticateToken, async (req, res) => {
       booking,
       booking.pool
     ).catch(err => console.error('Email error:', err));
+
+    // Trigger Make.com webhook for booking event (fire-and-forget)
+    triggerBookingWebhook(booking, booking.pool, booking.user)
+      .catch(err => console.error('Webhook error:', err));
 
     res.status(201).json(booking);
   } catch (error) {
