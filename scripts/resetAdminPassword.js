@@ -1,17 +1,24 @@
 const { PrismaClient } = require('../generated/prisma')
 const bcrypt = require('bcrypt')
+require('dotenv').config()
 
 const prisma = new PrismaClient()
 
 async function resetAdminPassword() {
-  const email = 'poolbookernotifier@gmail.com' // Change this to your admin email
-  const newPassword = 'admin123' // Change this to your new password
+  const email = process.env.ADMIN_EMAIL || 'admin@example.com'
+  const newPassword = process.env.ADMIN_PASSWORD
+
+  if (!newPassword) {
+    console.error('Error: ADMIN_PASSWORD environment variable is not set')
+    console.error('Please set ADMIN_PASSWORD in your .env file')
+    process.exit(1)
+  } 
   
   try {
-    // Hash the new password
+    // Hash 
     const hashedPassword = await bcrypt.hash(newPassword, 10)
     
-    // Update the admin user's password
+    
     const updatedUser = await prisma.user.updateMany({
       where: {
         email: email,
@@ -23,14 +30,14 @@ async function resetAdminPassword() {
     })
     
     if (updatedUser.count === 0) {
-      console.log('❌ No admin user found with that email')
+      console.log('No admin user found with that email')
       console.log('Available users:')
       const users = await prisma.user.findMany({
         select: { id: true, email: true, name: true, role: true }
       })
       console.table(users)
     } else {
-      console.log('✅ Admin password reset successfully!')
+      console.log('Admin password reset successfully!')
       console.log(`Email: ${email}`)
       console.log(`New password: ${newPassword}`)
     }
