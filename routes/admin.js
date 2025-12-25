@@ -98,7 +98,7 @@ router.delete('/bookings/:id', async (req, res) => {
   }
 });
 
-// Get user by ID with all bookings
+// Get user by ID 
 router.get('/users/:id', async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
@@ -159,7 +159,7 @@ router.post('/users', async (req, res) => {
         name,
         password: hashedPassword,
         role: role || 'user',
-        emailVerified: true // Admin-created users are auto-verified
+        emailVerified: true // auto verified
       },
       select: {
         id: true,
@@ -187,7 +187,7 @@ router.put('/users/:id', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Check email uniqueness if changing
+    // Check email uniqueness 
     if (email && email !== user.email) {
       const existing = await prisma.user.findUnique({ where: { email } });
       if (existing) {
@@ -217,12 +217,12 @@ router.put('/users/:id', async (req, res) => {
   }
 });
 
-// Delete user (also deletes their bookings via cascade)
+// Delete user plus the rest
 router.delete('/users/:id', async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
 
-    // Prevent deleting yourself
+    // no deleting of admin
     if (userId === req.user.userId) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
@@ -345,7 +345,7 @@ router.post('/pools', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: id, name, address, city, latitude, longitude' });
     }
 
-    // Check if pool ID already exists
+    // Check if pool ID exists
     const existing = await prisma.pool.findUnique({ where: { id } });
     if (existing) {
       return res.status(400).json({ error: 'Pool ID already exists' });
@@ -410,7 +410,7 @@ router.put('/pools/:id', async (req, res) => {
   }
 });
 
-// Delete pool
+//Delete pool
 router.delete('/pools/:id', async (req, res) => {
   try {
     const poolId = req.params.id;
@@ -424,7 +424,7 @@ router.delete('/pools/:id', async (req, res) => {
       return res.status(404).json({ error: 'Pool not found' });
     }
 
-    // Check if pool has bookings
+    //Check if pool has bookings
     if (pool._count.bookings > 0) {
       return res.status(400).json({ 
         error: `Cannot delete pool with ${pool._count.bookings} existing booking(s). Delete bookings first.`

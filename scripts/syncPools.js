@@ -52,7 +52,7 @@ async function syncPools() {
 
     console.log(`Found ${indoorPools.length} indoor pools and ${outdoorPools.length} outdoor pools`);
 
-    // Combine all pools
+    // Combine
     const allPools = [
       ...indoorPools.map(p => ({ ...p, isIndoor: true })),
       ...outdoorPools.map(p => ({ ...p, isIndoor: false }))
@@ -88,8 +88,8 @@ async function syncPools() {
             ? `${poolDetail.location.address.street || ''} ${poolDetail.location.address.streetnumber || ''}`.trim()
             : 'Unknown',
           city: poolDetail.location?.address?.municipality || 'Unknown',
-          latitude: lat,  // Now proper WGS84 latitude
-          longitude: lng, // Now proper WGS84 longitude
+          latitude: lat,  
+          longitude: lng, 
           poolType: poi.isIndoor ? 'Indoor' : 'Outdoor',
           isIndoor: poi.isIndoor,
           facilities: null,
@@ -99,7 +99,7 @@ async function syncPools() {
           capacity: 50
         };
 
-        // Upsert: create if doesn't exist, update if exists
+
         await prisma.pool.upsert({
           where: { id: poi.id },
           update: poolData,
@@ -108,12 +108,11 @@ async function syncPools() {
 
         inserted++;
         
-        // Progress indicator
         if ((i + 1) % 20 === 0) {
           console.log(`   Processed ${i + 1}/${allPools.length} pools...`);
         }
         
-        // Small delay to avoid overwhelming the API
+        // Small delay 
         await new Promise(resolve => setTimeout(resolve, 100));
         
       } catch (error) {
@@ -122,17 +121,17 @@ async function syncPools() {
       }
     }
 
-    console.log('\n✅ Sync completed!');
+    console.log('\n Sync completed!');
     console.log(`   Processed: ${inserted} pools`);
     console.log(`   Errors: ${errors}`);
     console.log(`   Total in database: ${await prisma.pool.count()}`);
 
   } catch (error) {
-    console.error('❌ Sync failed:', error.message);
+    console.error('Sync failed:', error.message);
   } finally {
     await prisma.$disconnect();
   }
 }
 
-// Run the sync
+//run
 syncPools();

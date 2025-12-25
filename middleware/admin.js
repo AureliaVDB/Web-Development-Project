@@ -1,6 +1,6 @@
-// Admin middleware - checks if user has admin role
+// Admin middleware :: checks if user has admin role
 const requireAdmin = (req, res, next) => {
-  // authenticateToken should run first to set req.user
+  //ckeck user exists
   if (!req.user) {
     return res.status(401).json({ error: 'Authentication required' });
   }
