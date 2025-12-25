@@ -23,7 +23,10 @@ router.get('/my-bookings', authenticateToken, async (req, res) => {
 // Create booking
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const { poolId, bookingDate, startTime } = req.body;
+    let { poolId, bookingDate, startTime } = req.body;
+
+    // Coerce types
+    poolId = parseInt(poolId);
 
     // Validate required fields
     if (!poolId || !bookingDate || !startTime) {
@@ -40,12 +43,25 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Cannot book in the past' });
     }
 
-    // Validate time slot (must be one of the hourly slots from 9am to 4pm)
-    const validSlots = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
+    // Check if pool exists
+    const pool = await prisma.pool.findUnique({ where: { id: poolId } });
+    if (!pool) {
+      return res.status(404).json({ error: 'Pool not found' });
+    }
+
+    // Validate time slot dynamically based on pool operating hours
+    const validSlots = [];
+    const [openHour] = pool.openingTime.split(':').map(Number);
+    const [closeHour, closeMin] = pool.closingTime.split(':').map(Number);
+    let h = openHour;
+    while (h < closeHour || (h === closeHour && closeMin > 0)) {
+      validSlots.push(`${String(h).padStart(2, '0')}:00`);
+      h++;
+    }
     if (!validSlots.includes(startTime)) {
       return res.status(400).json({ 
-        error: 'Invalid time slot. Must be one of: 09:00, 10:00, 11:00, 12:00, 13:00, 14:00, 15:00, 16:00',
-        validSlots 
+        error: 'Invalid time slot for this pool.',
+        validSlots
       });
     }
 
@@ -54,20 +70,11 @@ router.post('/', authenticateToken, async (req, res) => {
     const endHour = String(parseInt(hours) + 1).padStart(2, '0');
     const endTime = `${endHour}:00`;
 
-    // Check if pool exists
-    const pool = await prisma.pool.findUnique({
-      where: { id: poolId }
-    });
-
-    if (!pool) {
-      return res.status(404).json({ error: 'Pool not found' });
-    }
-
     // Check capacity - count bookings for same pool, date, and time slot
     const existingBookings = await prisma.booking.count({
       where: {
         poolId,
-        bookingDate: new Date(bookingDate),
+        bookingDate: bookingDateObj,
         startTime,
         status: 'confirmed'
       }
@@ -82,10 +89,10 @@ router.post('/', authenticateToken, async (req, res) => {
       data: {
         userId: req.user.userId,
         poolId,
-        bookingDate: new Date(bookingDate),
+        bookingDate: bookingDateObj,
         startTime,
         endTime,
-        duration: 1, // Always 1 hour
+        duration: 1,
         totalPrice: 0,
         status: 'confirmed'
       },
