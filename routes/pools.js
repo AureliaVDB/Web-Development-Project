@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('../generated/prisma');
 const { calculateDistance } = require('../utils/distance');
+const { authenticateToken } = require('../middleware/auth');
 const prisma = new PrismaClient();
 
 // Get all swimming pools from database
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const { search, type, city, x, y, radius } = req.query;
 
@@ -50,6 +51,13 @@ router.get('/', async (req, res) => {
       }
     });
 
+    // Get user's favorites
+    const userFavorites = await prisma.userFavorite.findMany({
+      where: { userId: req.user.userId },
+      select: { poolId: true }
+    });
+    const favoriteIds = new Set(userFavorites.map(f => f.poolId));
+
     // Filter by distance if coordinates provided
     if (x && y) {
       const userX = parseFloat(x);
@@ -59,7 +67,8 @@ router.get('/', async (req, res) => {
       // Calculate distance for each pool
       pools = pools.map(pool => ({
         ...pool,
-        distance: calculateDistance(userX, userY, pool.longitude, pool.latitude)
+        distance: calculateDistance(userX, userY, pool.longitude, pool.latitude),
+        isFavorited: favoriteIds.has(pool.id)
       }));
 
       // Filter by radius if specified
@@ -69,6 +78,12 @@ router.get('/', async (req, res) => {
 
       // Sort by distance
       pools.sort((a, b) => a.distance - b.distance);
+    } else {
+      // Add isFavorited flag
+      pools = pools.map(pool => ({
+        ...pool,
+        isFavorited: favoriteIds.has(pool.id)
+      }));
     }
 
     res.json({

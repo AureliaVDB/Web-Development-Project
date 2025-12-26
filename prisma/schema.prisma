@@ -9,38 +9,40 @@ datasource db {
 }
 
 model User {
-  id                Int       @id @default(autoincrement())
-  email             String    @unique
+  id                Int            @id @default(autoincrement())
+  email             String         @unique
   name              String
   password          String
-  role              String    @default("user")
-  emailVerified     Boolean   @default(false)
+  role              String         @default("user")
+  emailVerified     Boolean        @default(false)
   verificationToken String?
   resetToken        String?
   resetTokenExpiry  DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
   bookings          Booking[]
+  favorites         UserFavorite[]
 }
 
 model Pool {
-  id          String    @id
+  id          String         @id
   name        String
-  description String?   @db.Text
+  description String?        @db.Text
   address     String
   city        String
   latitude    Float
   longitude   Float
   poolType    String
-  isIndoor    Boolean   @default(false)
-  facilities  String?   @db.Text
+  isIndoor    Boolean        @default(false)
+  facilities  String?        @db.Text
   imageUrl    String?
   openingTime String
   closingTime String
   capacity    Int
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
   bookings    Booking[]
+  favorites   UserFavorite[]
 }
 
 model Booking {
@@ -58,6 +60,19 @@ model Booking {
   user        User     @relation(fields: [userId], references: [id])
   pool        Pool     @relation(fields: [poolId], references: [id])
 
+  @@index([userId])
+  @@index([poolId])
+}
+
+model UserFavorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  poolId    String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pool      Pool     @relation(fields: [poolId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, poolId])
   @@index([userId])
   @@index([poolId])
 }

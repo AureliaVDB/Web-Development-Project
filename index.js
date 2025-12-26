@@ -26,11 +26,13 @@ const usersRouter = require('./routes/users');
 const poolsRouter = require('./routes/pools');
 const bookingsRouter = require('./routes/bookings');
 const adminRouter = require('./routes/admin');
+const favoritesRouter = require('./routes/favorites');
 
 app.use('/auth', authLimiter, authRouter);
 app.use('/users', usersRouter);
 app.use('/pools', poolsRouter);
 app.use('/bookings', bookingsRouter);
+app.use('/favorites', favoritesRouter);
 app.use('/admin', adminRouter);
 
 // Health check
