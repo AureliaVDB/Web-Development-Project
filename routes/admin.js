@@ -273,7 +273,7 @@ router.post('/bookings', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Calculate endTime
+    //Calculate endtime
     const [hours] = startTime.split(':');
     const endTime = `${String(parseInt(hours) + 1).padStart(2, '0')}:00`;
 
@@ -345,7 +345,7 @@ router.post('/pools', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields: id, name, address, city, latitude, longitude' });
     }
 
-    // Check if pool ID exists
+    // Check if pool id exists
     const existing = await prisma.pool.findUnique({ where: { id } });
     if (existing) {
       return res.status(400).json({ error: 'Pool ID already exists' });

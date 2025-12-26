@@ -1,4 +1,4 @@
-// Admin middleware :: checks if user has admin role
+// Admin middleware checks if user has admin role
 const requireAdmin = (req, res, next) => {
   //ckeck user exists
   if (!req.user) {

@@ -73,7 +73,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find user
+    // find user
     const user = await prisma.user.findUnique({
       where: { email }
     });
@@ -82,14 +82,14 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Verify password
+    // verify password
     const validPassword = await bcrypt.compare(password, user.password);
 
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Check if email is verified
+    //Check if email is verified
     if (!user.emailVerified) {
       return res.status(403).json({ 
         error: 'Please verify your email before logging in',
@@ -97,7 +97,7 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Generate JWT
+    //Generate JWT
     const token = jwt.sign(
       { userId: user.id, email: user.email, role: user.role },
       process.env.JWT_SECRET,
