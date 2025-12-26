@@ -10,7 +10,7 @@ router.get('/', authenticateToken, async (req, res) => {
   try {
     const { search, type, city, x, y, radius } = req.query;
 
-    // Build filter conditions
+    // build filter conditions
     const where = {};
 
     if (search) {
@@ -31,7 +31,7 @@ router.get('/', authenticateToken, async (req, res) => {
       };
     }
 
-    // Fetch pools from database
+    // fetch pools from database
     let pools = await prisma.pool.findMany({
       where,
       select: {
@@ -51,35 +51,35 @@ router.get('/', authenticateToken, async (req, res) => {
       }
     });
 
-    // Get user's favorites
+    // get user's favorites
     const userFavorites = await prisma.userFavorite.findMany({
       where: { userId: req.user.userId },
       select: { poolId: true }
     });
     const favoriteIds = new Set(userFavorites.map(f => f.poolId));
 
-    // Filter by distance if coordinates provided
+    // filter by distance if coordinates provided
     if (x && y) {
       const userX = parseFloat(x);
       const userY = parseFloat(y);
       const maxRadius = radius ? parseFloat(radius) : null;
 
-      // Calculate distance for each pool
+      // calculate distance for each pool
       pools = pools.map(pool => ({
         ...pool,
         distance: calculateDistance(userX, userY, pool.longitude, pool.latitude),
         isFavorited: favoriteIds.has(pool.id)
       }));
 
-      // Filter by radius if specified
+      // filter by radius if specified
       if (maxRadius) {
         pools = pools.filter(pool => pool.distance <= maxRadius);
       }
 
-      // Sort by distance
+      // sort by distance
       pools.sort((a, b) => a.distance - b.distance);
     } else {
-      // Add isFavorited flag
+      // add isFavorited flag
       pools = pools.map(pool => ({
         ...pool,
         isFavorited: favoriteIds.has(pool.id)

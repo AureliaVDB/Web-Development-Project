@@ -10,13 +10,13 @@ router.post('/:poolId', authenticateToken, async (req, res) => {
   try {
     const { poolId } = req.params;
 
-    // Check if pool exists
+    // check if pool exists
     const pool = await prisma.pool.findUnique({ where: { id: poolId } });
     if (!pool) {
       return res.status(404).json({ error: 'Pool not found' });
     }
 
-    // Check if already favorited
+    // check if already favorited
     const existing = await prisma.userFavorite.findUnique({
       where: { userId_poolId: { userId: req.user.userId, poolId } }
     });
@@ -25,7 +25,7 @@ router.post('/:poolId', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Already favorited' });
     }
 
-    // Add favorite
+    // add to favorites
     const favorite = await prisma.userFavorite.create({
       data: {
         userId: req.user.userId,
@@ -44,7 +44,7 @@ router.delete('/:poolId', authenticateToken, async (req, res) => {
   try {
     const { poolId } = req.params;
 
-    // Find and delete favorite
+    // find and remove from favorites
     const favorite = await prisma.userFavorite.findUnique({
       where: { userId_poolId: { userId: req.user.userId, poolId } }
     });

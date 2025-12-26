@@ -12,7 +12,7 @@ router.post('/register', async (req, res) => {
   try {
     const { email, name, password } = req.body;
 
-    // Basic validation
+    // basic validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const hasMinLength = (password || '').length >= 6;
     const hasLetter = /[A-Za-z]/.test(password || '');
@@ -30,7 +30,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters and contain letters and numbers' });
     }
 
-    // Check if user already exists
+    // check if user already exists
     const existingUser = await prisma.user.findUnique({
       where: { email }
     });
@@ -39,13 +39,13 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Email already registered' });
     }
 
-    // Hash password
+    // hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Generate verification token
+    // generate verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
 
-    // Create user
+    // create user
     const user = await prisma.user.create({
       data: {
         email,
@@ -55,7 +55,7 @@ router.post('/register', async (req, res) => {
       }
     });
 
-    // Send verification email (don't wait)
+    // send verification email (don't wait for it)
     sendVerificationEmail(user.email, user.name, verificationToken)
       .catch(err => console.error('Email error:', err));
 

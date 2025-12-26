@@ -25,17 +25,17 @@ router.post('/', authenticateToken, async (req, res) => {
   try {
     const { poolId, bookingDate, startTime } = req.body;
 
-    // Check if user is admin - admins cannot book
+    // check if user is admin - admins can't book
     if (req.user.role === 'admin') {
       return res.status(403).json({ error: 'Administrators cannot make bookings' });
     }
 
-    // Validate required fields
+    // validate required fields
     if (!poolId || !bookingDate || !startTime) {
       return res.status(400).json({ error: 'Missing required fields: poolId, bookingDate, startTime' });
     }
 
-    // Validate date is not in the past
+    // make sure date isn't in the past
     const bookingDateObj = new Date(bookingDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -45,13 +45,13 @@ router.post('/', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Cannot book in the past' });
     }
 
-    // Check if pool exists
+    // check if pool exists
     const pool = await prisma.pool.findUnique({ where: { id: poolId } });
     if (!pool) {
       return res.status(404).json({ error: 'Pool not found' });
     }
 
-    // Validate time slot dynamically based on pool operating hours
+    // validate time slot based on pool hours
     const validSlots = [];
     const [openHour] = pool.openingTime.split(':').map(Number);
     const [closeHour, closeMin] = pool.closingTime.split(':').map(Number);
@@ -67,12 +67,12 @@ router.post('/', authenticateToken, async (req, res) => {
       });
     }
 
-    // Calculate endTime (1 hour after startTime)
+    // calculate endTime (1 hour later)
     const [hours] = startTime.split(':');
     const endHour = String(parseInt(hours) + 1).padStart(2, '0');
     const endTime = `${endHour}:00`;
 
-    // Check capacity - count bookings for same pool, date, and time slot
+    // check capacity - count existing bookings for this slot
     const existingBookings = await prisma.booking.count({
       where: {
         poolId,

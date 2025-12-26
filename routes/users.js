@@ -90,7 +90,7 @@ router.post('/change-password', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'New password must be at least 6 characters' });
     }
 
-    // Get user with password
+    // get user with password
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId }
     });
@@ -99,16 +99,16 @@ router.post('/change-password', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Verify old password
+    // verify old password
     const validPassword = await bcrypt.compare(oldPassword, user.password);
     if (!validPassword) {
       return res.status(400).json({ error: 'Current password is incorrect' });
     }
 
-    // Hash new password
+    // hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    // Update password
+    // update password
     await prisma.user.update({
       where: { id: req.user.userId },
       data: { password: hashedPassword }
