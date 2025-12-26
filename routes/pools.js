@@ -114,62 +114,150 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Check availability for a pool on a specific date
+// Check availability for a pool on a specific date or date range
 router.get('/:id/availability', async (req, res) => {
   try {
-    const { date } = req.query;
+    const { date, startDate, endDate } = req.query;
 
-    if (!date) {
-      return res.status(400).json({ error: 'Date parameter required (format: YYYY-MM-DD)' });
+    // Single date mode
+    if (date) {
+      return handleSingleDateAvailability(req, res, date);
     }
 
-    const pool = await prisma.pool.findUnique({
-      where: { id: req.params.id }
-    });
-
-    if (!pool) {
-      return res.status(404).json({ error: 'Pool not found' });
+    // Date range mode
+    if (startDate && endDate) {
+      return handleDateRangeAvailability(req, res, startDate, endDate);
     }
 
-    // All possible time slots
-    const timeSlots = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
-
-    // Get bookings for this pool on this date
-    const bookings = await prisma.booking.findMany({
-      where: {
-        poolId: req.params.id,
-        bookingDate: new Date(date),
-        status: 'confirmed'
-      }
-    });
-
-    // Count bookings per time slot
-    const availability = timeSlots.map(slot => {
-      const bookingsAtSlot = bookings.filter(b => b.startTime === slot).length;
-      const available = pool.capacity - bookingsAtSlot;
-      
-      return {
-        startTime: slot,
-        endTime: `${String(parseInt(slot.split(':')[0]) + 1).padStart(2, '0')}:00`,
-        capacity: pool.capacity,
-        booked: bookingsAtSlot,
-        available,
-        isAvailable: available > 0
-      };
-    });
-
-    res.json({
-      poolId: pool.id,
-      poolName: pool.name,
-      date,
-      openingTime: pool.openingTime,
-      closingTime: pool.closingTime,
-      slots: availability
+    return res.status(400).json({ 
+      error: 'Either date parameter or both startDate and endDate parameters required (format: YYYY-MM-DD)' 
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to check availability', details: error.message });
   }
 });
+
+async function handleSingleDateAvailability(req, res, date) {
+  const pool = await prisma.pool.findUnique({
+    where: { id: req.params.id }
+  });
+
+  if (!pool) {
+    return res.status(404).json({ error: 'Pool not found' });
+  }
+
+  // All possible time slots
+  const timeSlots = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
+
+  // Get bookings for this pool on this date
+  const bookings = await prisma.booking.findMany({
+    where: {
+      poolId: req.params.id,
+      bookingDate: new Date(date),
+      status: 'confirmed'
+    }
+  });
+
+  // Count bookings per time slot
+  const availability = timeSlots.map(slot => {
+    const bookingsAtSlot = bookings.filter(b => b.startTime === slot).length;
+    const available = pool.capacity - bookingsAtSlot;
+    
+    return {
+      startTime: slot,
+      endTime: `${String(parseInt(slot.split(':')[0]) + 1).padStart(2, '0')}:00`,
+      capacity: pool.capacity,
+      booked: bookingsAtSlot,
+      available,
+      isAvailable: available > 0
+    };
+  });
+
+  res.json({
+    poolId: pool.id,
+    poolName: pool.name,
+    date,
+    openingTime: pool.openingTime,
+    closingTime: pool.closingTime,
+    slots: availability
+  });
+}
+
+async function handleDateRangeAvailability(req, res, startDate, endDate) {
+  const pool = await prisma.pool.findUnique({
+    where: { id: req.params.id }
+  });
+
+  if (!pool) {
+    return res.status(404).json({ error: 'Pool not found' });
+  }
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  
+  // Get all bookings in the date range
+  const bookings = await prisma.booking.findMany({
+    where: {
+      poolId: req.params.id,
+      bookingDate: {
+        gte: start,
+        lte: end
+      },
+      status: 'confirmed'
+    }
+  });
+
+  // Group bookings by date
+  const bookingsByDate = {};
+  bookings.forEach(b => {
+    const dateKey = b.bookingDate.toISOString().split('T')[0];
+    if (!bookingsByDate[dateKey]) {
+      bookingsByDate[dateKey] = [];
+    }
+    bookingsByDate[dateKey].push(b);
+  });
+
+  // Calculate availability for each date
+  const dates = [];
+  const current = new Date(start);
+  
+  while (current <= end) {
+    const dateKey = current.toISOString().split('T')[0];
+    const dayBookings = bookingsByDate[dateKey] || [];
+    
+    // All possible time slots
+    const timeSlots = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00'];
+    
+    // Count how many slots have availability
+    let availableSlots = 0;
+    let totalSlots = timeSlots.length;
+    
+    timeSlots.forEach(slot => {
+      const bookingsAtSlot = dayBookings.filter(b => b.startTime === slot).length;
+      const available = pool.capacity - bookingsAtSlot;
+      if (available > 0) {
+        availableSlots++;
+      }
+    });
+    
+    dates.push({
+      date: dateKey,
+      hasAvailableSlots: availableSlots > 0,
+      availableSlots,
+      totalSlots
+    });
+    
+    current.setDate(current.getDate() + 1);
+  }
+
+  res.json({
+    poolId: pool.id,
+    poolName: pool.name,
+    startDate,
+    endDate,
+    dates
+  });
+}
 
 // Debug route - see raw API response
 router.get('/debug/raw', async (req, res) => {
